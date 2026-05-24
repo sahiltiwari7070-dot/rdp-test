@@ -8,7 +8,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install dependencies
+      # ---------------- INSTALL ----------------
+      - name: Install tools
         run: |
           sudo apt update
           sudo apt install -y curl unzip tmate nodejs npm
@@ -24,34 +25,35 @@ jobs:
           echo "===== WEB ACCESS ====="
           tmate -S /tmp/tmate.sock display -p '#{tmate_web}'
 
-      # ---------------- SAMPLE APP (PORT 3000) ----------------
-      - name: Create dummy app
+      # ---------------- APP ON PORT 3000 ----------------
+      - name: Start dummy app
         run: |
           mkdir app && cd app
           npm init -y
           npm install express
 
           cat <<EOF > index.js
-          const express = require('express');
-          const app = express();
+          const express = require('express')
+          const app = express()
 
           app.get('/', (req, res) => {
-            res.send('Hello from GitHub Actions port 3000 🚀');
-          });
+            res.send('Running on GitHub Actions 🚀 port 3000')
+          })
 
-          app.listen(3000, () => console.log('Running on 3000'));
+          app.listen(3000)
           EOF
 
           node index.js &
 
       # ---------------- NGROK ----------------
-      - name: Setup ngrok
+      - name: Install ngrok
         run: |
           curl -sSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -o ngrok.tgz
           tar -xzf ngrok.tgz
           sudo mv ngrok /usr/local/bin
           ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
 
-      - name: Expose port 3000
+      # ---------------- EXPOSE FIXED DOMAIN ----------------
+      - name: Expose port 3000 via ngrok domain
         run: |
-          ngrok http 3000 --log=stdout
+          ngrok http --domain=${{ secrets.NGROK_DOMAIN }} 3000
