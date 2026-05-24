@@ -25,26 +25,6 @@ jobs:
           echo "===== WEB ACCESS ====="
           tmate -S /tmp/tmate.sock display -p '#{tmate_web}'
 
-      # ---------------- APP ON PORT 3000 ----------------
-      - name: Start dummy app
-        run: |
-          mkdir app && cd app
-          npm init -y
-          npm install express
-
-          cat <<EOF > index.js
-          const express = require('express')
-          const app = express()
-
-          app.get('/', (req, res) => {
-            res.send('Running on GitHub Actions 🚀 port 3000')
-          })
-
-          app.listen(3000)
-          EOF
-
-          node index.js &
-
       # ---------------- NGROK ----------------
       - name: Install ngrok
         run: |
