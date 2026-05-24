@@ -1,24 +1,57 @@
-name: Ubuntu
+name: Remote Dev Box
 on: workflow_dispatch
 
 jobs:
   system:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
-      - name: Update system
-        run: sudo apt update
-      - name: Install tmate
-        run: sudo apt install -y tmate
-      - name: Start tmate session (SSH access)
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y curl unzip tmate nodejs npm
+
+      # ---------------- TMATE (SSH ACCESS) ----------------
+      - name: Start tmate session
         run: |
           tmate -S /tmp/tmate.sock new-session -d
           tmate -S /tmp/tmate.sock wait tmate-ready
 
-          echo "==================== SSH ACCESS ===================="
+          echo "===== SSH ACCESS ====="
           tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
-          echo "==================== WEB ACCESS ===================="
+          echo "===== WEB ACCESS ====="
           tmate -S /tmp/tmate.sock display -p '#{tmate_web}'
 
-          # keep job alive
-          sleep infinity
+      # ---------------- SAMPLE APP (PORT 3000) ----------------
+      - name: Create dummy app
+        run: |
+          mkdir app && cd app
+          npm init -y
+          npm install express
+
+          cat <<EOF > index.js
+          const express = require('express');
+          const app = express();
+
+          app.get('/', (req, res) => {
+            res.send('Hello from GitHub Actions port 3000 🚀');
+          });
+
+          app.listen(3000, () => console.log('Running on 3000'));
+          EOF
+
+          node index.js &
+
+      # ---------------- NGROK ----------------
+      - name: Setup ngrok
+        run: |
+          curl -sSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz -o ngrok.tgz
+          tar -xzf ngrok.tgz
+          sudo mv ngrok /usr/local/bin
+          ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
+
+      - name: Expose port 3000
+        run: |
+          ngrok http 3000 --log=stdout
